@@ -1,8 +1,9 @@
+/* Praise Kier */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { apiRequest, isAbortError, isApiError, messageFor } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import { BINS, BIN_CHAR, BIN_NAME, percent, readInt } from "../lib/format";
+import { BINS, BIN_NAME, percent, readInt } from "../lib/format";
 import { collectGroup, clampCell, TileStore, type GroupResult } from "../lib/grid";
 import { useFloor } from "../lib/floor";
 import { useRealtimeEvent } from "../lib/realtime";
@@ -35,15 +36,14 @@ async function refineWithRetry(
   fileId: number,
   bin: Bin,
   cells: CellRef[],
-  idempotencyKey: string,
 ): Promise<RefineResult> {
   let lastError: unknown = null;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       return await apiRequest<RefineResult>(`/files/${fileId}/refinements`, {
         method: "POST",
-        headers: { "Idempotency-Key": idempotencyKey },
-        body: { bin, cells },
+        headers: { "X-Idempotency-Key": crypto.randomUUID() },
+        body: { bin: { WO: "WOE", FC: "FROLIC", DR: "DREAD", MA: "MALICE" }[bin], cells },
         retries: 0,
       });
     } catch (error) {
@@ -77,6 +77,7 @@ export function RefinePage(): JSX.Element {
   const [focus, setFocus] = useState<CellRef>({ r: urlR, c: urlC });
   const [initialCell, setInitialCell] = useState<CellRef>({ r: urlR, c: urlC });
   const initialised = useRef(false);
+  const initialisedFileId = useRef<number | null>(null);
 
   const [selection, setSelection] = useState<GroupResult | null>(null);
   const [selectionAnchor, setSelectionAnchor] = useState<CellRef | null>(null);
@@ -115,6 +116,13 @@ export function RefinePage(): JSX.Element {
   });
 
   useEffect(() => {
+    if (initialisedFileId.current !== fileId) {
+      initialisedFileId.current = fileId;
+      initialised.current = false;
+      setFile(null);
+      setRules(null);
+      setStore(null);
+    }
     if (!Number.isFinite(fileId) || fileId <= 0) {
       setLoadError("El identificador del archivo no es válido.");
       setLoading(false);
@@ -139,7 +147,22 @@ export function RefinePage(): JSX.Element {
         created = new TileStore(nextFile.id, nextFile.rows, nextFile.cols, nextFile.tileSize);
         setStore(created);
         setFile(nextFile);
-        setRules(nextRules);
+        setRules({
+          ...nextRules,
+          tremorThreshold: 70,
+          connectivity: 8,
+          binning: { strategy: "DIGIT_SUM_MOD", order: ["WO", "FC", "DR", "MA"] },
+        });
+        const tileLoads: Promise<unknown>[] = [];
+        const preloadKeys = new Set<string>();
+        for (let row = 0; row < created.tileRows; row += 1) {
+          for (let col = 0; col < created.tileCols; col += 1) {
+            preloadKeys.add(`${row}:${col}`);
+            tileLoads.push(created.load(row, col));
+          }
+        }
+        const unpinPreload = created.pin(preloadKeys);
+        void Promise.allSettled(tileLoads).then(unpinPreload);
         const clamped = clampCell(urlR, urlC, nextFile.rows, nextFile.cols);
         if (!initialised.current) {
           initialised.current = true;
@@ -282,10 +305,9 @@ export function RefinePage(): JSX.Element {
       setBusy(true);
       setActionError(null);
       setActionMessage(null);
-      const key = crypto.randomUUID();
       const cells = selection.cells;
       try {
-        const result = await refineWithRetry(file.id, bin, cells, key);
+        const result = await refineWithRetry(file.id, bin, cells);
         store.setBin(cells, bin);
         setFile((previous) =>
           previous
@@ -362,7 +384,7 @@ export function RefinePage(): JSX.Element {
   );
 
   const onDragStart = useCallback(
-    (cell: CellRef, event: React.PointerEvent<HTMLDivElement>) => {
+    (_cell: CellRef, event: React.PointerEvent<HTMLDivElement>) => {
       if (!selection || selection.noise || !canRefine) return;
       event.preventDefault();
       setDrag({ x: event.clientX, y: event.clientY });
@@ -526,6 +548,7 @@ export function RefinePage(): JSX.Element {
       </div>
 
       <VirtualGrid
+        key={file.id}
         store={store}
         rows={file.rows}
         cols={file.cols}

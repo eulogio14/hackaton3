@@ -1,3 +1,4 @@
+/* Praise Kier */
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { apiRequest, isAbortError, messageFor } from "../lib/api";

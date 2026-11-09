@@ -1,3 +1,4 @@
+/* Praise Kier */
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiRequestWithMeta, isAbortError, messageFor } from "../lib/api";

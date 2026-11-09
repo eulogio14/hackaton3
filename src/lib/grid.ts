@@ -66,7 +66,6 @@ export class TileStore {
   private inflight = new Map<string, Promise<DecodedTile | null>>();
   private controllers = new Map<string, AbortController>();
   private listeners = new Set<() => void>();
-  private wanted = new Set<string>();
   private pinned = new Set<string>();
   private gateUntil = 0;
   private disposed = false;
@@ -109,11 +108,11 @@ export class TileStore {
   }
 
   setWanted(keys: Set<string>): void {
-    this.wanted = keys;
     for (const [key, controller] of this.controllers) {
       if (!keys.has(key) && !this.pinned.has(key)) {
         controller.abort();
         this.controllers.delete(key);
+        this.inflight.delete(key);
       }
     }
   }
@@ -165,7 +164,7 @@ export class TileStore {
         try {
           await this.waitGate(controller.signal);
           const tile = await apiRequest<Tile>(
-            `/files/${this.fileId}/tiles/${tileRow}/${tileCol}`,
+            `/files/${this.fileId}/tiles/${tileRow + 1}/${tileCol + 1}`,
             { signal: controller.signal, retries: 0 },
           );
           const result = decodeTile(tile);
@@ -197,8 +196,8 @@ export class TileStore {
     try {
       return await promise;
     } finally {
-      this.inflight.delete(key);
-      this.controllers.delete(key);
+      if (this.inflight.get(key) === promise) this.inflight.delete(key);
+      if (this.controllers.get(key) === controller) this.controllers.delete(key);
     }
   }
 

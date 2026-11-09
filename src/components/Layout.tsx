@@ -1,3 +1,4 @@
+/* Praise Kier */
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 import { useRealtime } from "../lib/realtime";

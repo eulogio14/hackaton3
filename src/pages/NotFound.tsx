@@ -1,3 +1,4 @@
+/* Praise Kier */
 import { Link } from "react-router-dom";
 
 export function NotFoundPage(): JSX.Element {

@@ -1,3 +1,4 @@
+/* Praise Kier */
 export function Loading({ label = "Cargando…" }: { label?: string }): JSX.Element {
   return (
     <div className="flex items-center justify-center gap-3 p-8 text-sm text-lumon-mint/70" role="status">

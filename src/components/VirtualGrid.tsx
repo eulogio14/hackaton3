@@ -1,3 +1,4 @@
+/* Praise Kier */
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CellRef, FloorCursor } from "../lib/types";
 import { clampCell, type TileStore } from "../lib/grid";
@@ -124,26 +125,30 @@ export function VirtualGrid({
     }
 
     if (focus.r < startRow) {
-      const shift = startRow - focus.r;
-      startRow = Math.max(0, startRow - shift);
-      endRow = Math.max(startRow, endRow - shift);
+      const span = endRow - startRow;
+      startRow = Math.min(focus.r, Math.max(0, rows - 1 - span));
+      endRow = Math.min(rows - 1, startRow + span);
     } else if (focus.r > endRow) {
-      const shift = focus.r - endRow;
-      endRow = Math.min(rows - 1, endRow + shift);
-      startRow = Math.min(startRow, Math.max(0, startRow + shift));
+      const span = endRow - startRow;
+      startRow = Math.min(Math.max(0, focus.r - span), Math.max(0, rows - 1 - span));
+      endRow = Math.min(rows - 1, startRow + span);
     }
     if (focus.c < startCol) {
-      const shift = startCol - focus.c;
-      startCol = Math.max(0, startCol - shift);
-      endCol = Math.max(startCol, endCol - shift);
+      const span = endCol - startCol;
+      startCol = Math.min(focus.c, Math.max(0, cols - 1 - span));
+      endCol = Math.min(cols - 1, startCol + span);
     } else if (focus.c > endCol) {
-      const shift = focus.c - endCol;
-      endCol = Math.min(cols - 1, endCol + shift);
-      startCol = Math.min(startCol, Math.max(0, startCol + shift));
+      const span = endCol - startCol;
+      startCol = Math.min(Math.max(0, focus.c - span), Math.max(0, cols - 1 - span));
+      endCol = Math.min(cols - 1, startCol + span);
     }
 
     return { startRow, endRow, startCol, endCol };
   }, [scroll.top, scroll.left, size.height, size.width, rows, cols, focus.r, focus.c]);
+
+  useEffect(() => {
+    scrollToCell(focus);
+  }, [focus.r, focus.c]);
 
   useEffect(() => {
     const keys = store.visibleTileKeys(range.startRow, range.endRow, range.startCol, range.endCol);

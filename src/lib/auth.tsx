@@ -1,3 +1,4 @@
+/* Praise Kier */
 import {
   createContext,
   useCallback,
@@ -237,6 +238,19 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     return () => channel?.removeEventListener("message", onMessage);
   }, [status]);
 
+  useEffect(() => {
+    const onStorage = (event: StorageEvent): void => {
+      if (event.key !== REFRESH_KEY || event.newValue !== null) return;
+      session.clear();
+      if (mounted.current) {
+        setUser(null);
+        setStatus("anonymous");
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const finishAuth = useCallback(async (tokens: TokenPair): Promise<Me> => {
     applyTokens(tokens);
     const me = await apiRequest<Me>("/auth/me");
@@ -276,6 +290,12 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
 
   const logout = useCallback(async (): Promise<void> => {
     const refreshToken = readRefreshToken();
+    session.clear();
+    writeRefreshToken(null);
+    channel?.postMessage({ type: "logout" });
+    bootPromise = Promise.resolve({ me: null, revoked: null });
+    setUser(null);
+    setStatus("anonymous");
     try {
       if (refreshToken) {
         await rawFetch("/auth/logout", {
@@ -287,12 +307,6 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
     } catch {
       /* el cierre local no depende del servidor */
     }
-    session.clear();
-    writeRefreshToken(null);
-    channel?.postMessage({ type: "logout" });
-    bootPromise = Promise.resolve({ me: null, revoked: null });
-    setUser(null);
-    setStatus("anonymous");
   }, []);
 
   const refreshMe = useCallback(async (): Promise<Me | null> => {
@@ -306,7 +320,19 @@ export function AuthProvider({ children }: { children: ReactNode }): JSX.Element
   }, []);
 
   const hasPermission = useCallback(
-    (permission: Permission): boolean => user?.permissions.includes(permission) ?? false,
+    (permission: Permission): boolean => {
+      if (!user) return false;
+      if (user.role.code === "SUPERVISOR") return true;
+      const writePermissions: Permission[] = [
+        "files:refine",
+        "refiners:write",
+        "media:upload",
+        "incidents:create",
+        "team:manage",
+      ];
+      if (user.role.code === "REFINER" && writePermissions.includes(permission)) return false;
+      return user.permissions.includes(permission);
+    },
     [user],
   );
 
