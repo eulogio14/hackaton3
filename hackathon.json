@@ -1,11 +1,11 @@
 {
   "teamCode": "TEAM-000",
-  "teamName": "Nombre de la cuadrilla",
+  "teamName": "Nombre",
   "deployUrl": "https://",
-  "storageProvider": "SUPABASE | CLOUDINARY",
+  "storageProvider": "CLOUDINARY",
   "integrantes": [
-    { "nombre": "Nombre Apellido", "codigo": "CODIGO UTEC" },
-    { "nombre": "Nombre Apellido", "codigo": "CODIGO UTEC" },
-    { "nombre": "Nombre Apellido", "codigo": "CODIGO UTEC" }
+    { "nombre": "Joel Rodrigo Eulogio Coquil", "codigo": "202510112" },
+    { "nombre": "Sebastian Lescano", "codigo": "202510247" },
+    { "nombre": "Francisco  ", "codigo": "201910540" }
   ]
 }
